@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-SCRIPT = "/Users/manolo/.claude/skills/knowledge-wiki/scripts/scan_raw.py"
+SCRIPT = str(Path.home() / ".claude" / "skills" / "knowledge-wiki" / "scripts" / "scan_raw.py")
 
 
 def make_project(tmp, raw_files=None, wiki_files=None, config=None):

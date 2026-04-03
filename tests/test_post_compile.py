@@ -5,8 +5,9 @@ import sys
 from pathlib import Path
 
 # Import the module directly for unit testing
-sys.path.insert(0, "/Users/manolo/.claude/skills/knowledge-wiki/scripts")
-from obsidian_post_compile import extract_frontmatter, rebuild_moc
+sys.path.insert(0, str(Path.home() / ".claude" / "skills" / "knowledge-wiki" / "scripts"))
+from obsidian_post_compile import rebuild_moc
+from utils import extract_frontmatter
 
 import tempfile
 
