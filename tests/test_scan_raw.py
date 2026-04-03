@@ -103,7 +103,8 @@ def test_wiki_articles_detected():
         assert manifest["stats"]["total_wiki"] == 1
         article = manifest["wiki_articles"][0]
         assert article["title"] == "Stoic Discipline"
-        assert "compiled_date" in article
+        assert article["compiled_date"] == "2026-04-03"
+        assert article["sources"] == ["[[raw/kindle/Ego Is the Enemy]]"]
 
 
 if __name__ == "__main__":
