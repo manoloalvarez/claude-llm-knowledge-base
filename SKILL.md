@@ -14,7 +14,7 @@ description: >
 
 Build LLM-compiled knowledge wikis from raw source directories. Ingest raw sources, compile a structured Obsidian wiki with concepts/themes/connections, query against it, health-check for gaps, and enrich with web research. All output lives in an Obsidian vault with wikilinks, tags, properties, and Maps of Content.
 
-**Commands:** `init`, `ingest`, `compile`, `query`, `health`, `enrich`, `translate`, `status`
+**Commands:** `init`, `ingest`, `compile`, `query`, `health`, `enrich`, `translate`, `status`, `publish`
 
 ---
 
@@ -579,7 +579,68 @@ For translations, count `.md` files in each `wiki-<lang>/` directory. Show `—`
 
 ---
 
-## 12. Script Invocation Patterns
+## 12. Command: publish
+
+```
+/knowledge-wiki publish [--into <project-path>]
+```
+
+Syncs the wiki vault to a Quartz site repo, commits, and pushes — triggering a Vercel (or similar) deploy. Requires `publishRepo` in `wiki.config.json`.
+
+**Config requirement:**
+
+`wiki.config.json` must include a `publishRepo` field pointing to the absolute path of the Quartz site repo:
+
+```json
+{
+  "name": "books",
+  "language": "en",
+  "publishRepo": "/Users/manolo/dev/ai-tools/llm-book-wiki",
+  "sources": [...]
+}
+```
+
+If `publishRepo` is missing, report: "No `publishRepo` configured in wiki.config.json. Add the absolute path to your Quartz site repo." and stop.
+
+**Pipeline:**
+
+1. **Read config:**
+   - Load `wiki.config.json` from the project root
+   - Validate `publishRepo` exists and the directory is a git repo
+
+2. **Run sync script:**
+   ```bash
+   cd <publishRepo> && bash sync.sh
+   ```
+   The sync script handles all content transformations (path rewriting, wikilink rewriting, affiliate tags, etc.). Parse its output for the article counts.
+
+3. **Check for changes:**
+   ```bash
+   cd <publishRepo> && git status --porcelain
+   ```
+   If no changes, report "Nothing to publish — site is up to date." and stop.
+
+4. **Commit and push:**
+   ```bash
+   cd <publishRepo> && git add -A && git commit -m "sync: update wiki content ($(date +%Y-%m-%d))" && git push
+   ```
+
+5. **Report** summary:
+   ```
+   Published!
+   ✓ Synced: 428 kb articles + 235 book sources
+   ✓ Committed and pushed to origin
+   ✓ Deploy triggered at <baseUrl from quartz.config.ts>
+   ```
+
+**Notes:**
+- The sync script (`sync.sh`) lives in the Quartz repo, not the skill. Each project's sync script handles its own transformations.
+- This command never modifies the vault — all changes happen in the Quartz repo's `content/` directory.
+- If `git push` fails (e.g., auth issues), report the error and suggest the user run `! cd <publishRepo> && git push` manually.
+
+---
+
+## 13. Script Invocation Patterns
 
 All scripts use the same pattern: JSON input, JSON output, Python 3.
 
@@ -622,7 +683,7 @@ echo '<json>' | python3 ~/.claude/skills/knowledge-wiki/scripts/obsidian_post_co
 
 ---
 
-## 13. Critical Instructions
+## 14. Critical Instructions
 
 **When the user invokes any compile, query, health, or enrich command, follow the pipeline exactly. Do NOT skip steps. Do NOT reorder steps.**
 
