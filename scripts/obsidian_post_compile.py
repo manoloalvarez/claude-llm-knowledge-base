@@ -17,8 +17,6 @@ Output: JSON summary to stdout.
 """
 
 import json
-import os
-import re
 import subprocess
 import sys
 from datetime import date
@@ -105,8 +103,48 @@ def get_tag_distribution(vault):
     return []
 
 
+CUSTOM_BEGIN = "<!-- BEGIN CUSTOM -->"
+CUSTOM_END = "<!-- END CUSTOM -->"
+
+
+def extract_preserved_blocks(moc_path):
+    """Read existing MOC and extract (title_line, intro_line, custom_block).
+
+    - title_line: first line if it starts with '#', else None
+    - intro_line: first non-empty line after the title, if any
+    - custom_block: everything between CUSTOM_BEGIN and CUSTOM_END (inclusive),
+      or None if markers are absent
+    """
+    if not moc_path.exists():
+        return None, None, None
+
+    text = moc_path.read_text(encoding="utf-8")
+    lines = text.split("\n")
+
+    title = lines[0] if lines and lines[0].startswith("#") else None
+    intro = None
+    for line in lines[1:]:
+        if line.strip():
+            intro = line
+            break
+
+    custom = None
+    if CUSTOM_BEGIN in text and CUSTOM_END in text:
+        start = text.index(CUSTOM_BEGIN)
+        end = text.index(CUSTOM_END) + len(CUSTOM_END)
+        custom = text[start:end]
+
+    return title, intro, custom
+
+
 def rebuild_moc(project_root, vault):
-    """Rebuild MOC - Knowledge Wiki.md by scanning wiki/ subdirectories."""
+    """Rebuild MOC - Knowledge Wiki.md by scanning wiki/ subdirectories.
+
+    Preserves:
+    - Existing title (first line starting with #)
+    - Existing intro line (first non-empty line after title)
+    - Any content between <!-- BEGIN CUSTOM --> and <!-- END CUSTOM --> markers
+    """
     wiki_dir = Path(project_root) / "wiki"
     if not wiki_dir.exists():
         return False
@@ -126,12 +164,20 @@ def rebuild_moc(project_root, vault):
     if not sections:
         return False
 
-    content = "# Knowledge Wiki\n\nAuto-generated Map of Content.\n"
+    moc_path = Path(project_root) / "MOC - Knowledge Wiki.md"
+    preserved_title, preserved_intro, preserved_custom = extract_preserved_blocks(moc_path)
+
+    title = preserved_title or "# Knowledge Wiki"
+    intro = preserved_intro or "Auto-generated Map of Content."
+
+    content = f"{title}\n\n{intro}\n"
     for category, articles in sections.items():
         content += f"\n## {category}\n\n"
         content += "\n".join(articles) + "\n"
 
-    moc_path = Path(project_root) / "MOC - Knowledge Wiki.md"
+    if preserved_custom:
+        content += f"\n{preserved_custom}\n"
+
     moc_path.write_text(content, encoding="utf-8")
     return True
 
